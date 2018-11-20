@@ -10,7 +10,7 @@ The number of times the disk is to be zeroed. 3 passes is considred to be secure
 .PARAMETER Force
 Forces the drive to be wipped with out conformation of the action
 .EXAMPLE 
-Wipe-Drive -DiskNumber 1 -NumberOfPasses 3 -force
+Wipe-DriveWin10 -DiskNumber 1 -NumberOfPasses 3 -force
 Forecs the drive to be wiped 3 times
 .NOTES
 Written by Kris Grss (contact@mosaicmk.com)
@@ -30,27 +30,26 @@ PARAM(
     [switch]$Force
 )
 
+If ((Get-WmiObject -class Win32_OperatingSystem).Caption -like "Microsoft Windows 7*") {Write-Error "This Script is not compatable with Windows 7" ; Exit 1}
+
 If (!($Force)) {
     $Con = Read-Host "Are you sure you want to wipe all data off disk $DiskNumber. (Y,N)"
-    If ($Con -like "N") {Exit 0}
-}
-
-If (!((Get-WmiObject win32_DiskDrive | Where-Object -Property Index -eq $DiskNumber).Model -eq "Microsoft Virtual Disk")) {Clear-Disk -Number $DiskNumber -RemoveData -RemoveOEM -Confirm:$false | Out-Null}Else {
-    $NumberOFParts = (Get-Partition -DiskNumber $DiskNumber).PartitionNumber
-    foreach ($Item in $NumberOFParts){
-        Remove-Partition -DiskNumber $DiskNumber -PartitionNumber $Item -Confirm:$False
-    }
+    If ($Con -notlike "Y*") {Exit 0}
 }
 
 $CDROM = (Get-Volume | Where-Object -Property DriveType -eq "CD-ROM").DriveLetter
 $CDROM = $CDROM + ":"
-$TempLetter = Get-ChildItem function:[d-z]: -n | Where-Object{ !(test-path $_) -and ($_ -ne $CDROM)} | Random
-$TempLetterTemp = $TempLetter.Trim(":"," ")
+$TempLetter = Get-ChildItem function:[d-z]: -n | Where-Object{ !(test-path $_) -and ($_ -ne $CDROM)} | Get-Random
 $TempLetterPath = $TempLetter + "\"
-New-Partition -DiskNumber $DiskNumber -UseMaximumSize -DriveLetter $TempLetterTemp | Out-Null
-Format-Volume -DriveLetter $TempLetterTemp -FileSystem NTFS -NewFileSystemLabel "CleanedDisk" -Force -Confirm:$False | Out-Null
+try {
+    Clear-Disk -Number $DiskNum -RemoveData -RemoveOEM -Confirm:$false -ErrorAction Stop
+    New-Partition -DiskNumber $DiskNum -UseMaximumSize -DriveLetter $Disk -ErrorAction Stop 
+    Format-Volume -DriveLetter $Disk -FileSystem NTFS -NewFileSystemLabel "CleanedDisk" -Force -Confirm:$False -InformationAction SilentlyContinue -ErrorAction Stop
+} catch {Write-Error "$_" ; exit 1}
+
+
 $FilePath = $TempLetterPath + "ZeroFile.tmp"
-$Volume = Get-WmiObject win32_volume | Where-Object -Property Name -EQ $TempLetterPath
+$Volume = Get-Volume -DriveLetter $TempLetterPath -InformationAction SilentlyContinue
 
 $PassCount = 0
 
