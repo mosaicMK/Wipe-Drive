@@ -76,8 +76,8 @@ Function Zero-Disk{
         } finally {
             Check_Count
             if($Stream) {$Stream.Close()}
-            Start-Sleep -Seconds 10
-            if((Test-Path $FilePath)) {Remove-Item $FilePath -Force}
+            Start-Sleep -Seconds 30
+            if(Test-Path $FilePath) {Remove-Item $FilePath -Force -ErrorAction SilentlyContinue}
             Remove-PartitionAccessPath -DiskNumber $DiskNumber -PartitionNumber 1 -AccessPath $TempLetterPath -Confirm:$false | Out-Null
         }
     } 
